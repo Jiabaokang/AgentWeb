@@ -109,6 +109,14 @@ public class FileChooser {
      */
     private static final String TAG = FileChooser.class.getSimpleName();
     /**
+     * 底部选择对话框的选项索引常量。
+     * 注意：这些索引与 onSelectItemsPrompt(options, callback) 中 options 的顺序保持一致：
+     * 0 -> 相机、1 -> 相册、2 -> 文件（当存在第三项时）。
+     */
+    private static final int CHOICE_CAMERA = 0;   // 相机选项
+    private static final int CHOICE_ALBUM = 1;    // 相册选项
+    private static final int CHOICE_FILE = 2;     // 文件选择器选项
+    /**
      * 当前 WebView
      */
     private final WebView mWebView;
@@ -155,7 +163,8 @@ public class FileChooser {
         this.mWebView = builder.mWebView;
         this.mPermissionInterceptor = builder.mPermissionInterceptor;
         this.mAcceptType = builder.mAcceptType;
-        this.mAgentWebUIController = new WeakReference<AbsAgentWebUIController>(AgentWebUtils.getAgentWebUIControllerByWebView(this.mWebView));
+        this.mAgentWebUIController =
+                new WeakReference<AbsAgentWebUIController>(AgentWebUtils.getAgentWebUIControllerByWebView(this.mWebView));
 
     }
 
@@ -254,11 +263,12 @@ public class FileChooser {
 
     private Intent getFileChooserIntent() {
         Intent mIntent = null;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mFileChooserParams != null && (mIntent = mFileChooserParams.createIntent()) != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mFileChooserParams != null && (mIntent =
+                mFileChooserParams.createIntent()) != null) {
             // 多选
             if (mFileChooserParams.getMode() == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) {
                 mIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-}
+            }
             //			mIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
             if (mFileChooserParams.getAcceptTypes() != null && mFileChooserParams.getAcceptTypes().length > 1) {
@@ -363,16 +373,18 @@ public class FileChooser {
         return new Handler.Callback() {
             @Override
             public boolean handleMessage(Message msg) {
+                // 处理用户在底部选择对话框中的点击结果。
+                // 当仅图片场景时，列表只有“相机/相册”，不包含 CHOICE_FILE。
                 switch (msg.what) {
-                    case 0:
+                    case CHOICE_CAMERA:
                         mCameraState = true;
                         onCameraAction();
                         break;
-                    case 1:
+                    case CHOICE_ALBUM:
                         mCameraState = false;
                         albumChooser();
                         break;
-                    case 2:
+                    case CHOICE_FILE:
                         mCameraState = false;
                         fileChooser();
                         break;
@@ -436,7 +448,6 @@ public class FileChooser {
     }
 
     private AgentActionFragment.PermissionListener mPermissionListener = new AgentActionFragment.PermissionListener() {
-
         @Override
         public void onRequestPermissionsResult(@NonNull String[] permissions, @NonNull int[] grantResults, Bundle extras) {
 
@@ -453,7 +464,6 @@ public class FileChooser {
                 chooserAction();
             } else {
                 cancel();
-
                 if (null != mAgentWebUIController.get()) {
                     mAgentWebUIController
                             .get()
@@ -492,8 +502,6 @@ public class FileChooser {
                 }
             }
         }
-
-
     }
 
     public void onIntentResult(int requestCode, int resultCode, Intent data) {
@@ -521,7 +529,8 @@ public class FileChooser {
 
         //5.0以上系统通过input标签获取文件
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            aboveLollipopCheckFilesAndCallback(mCameraState ? new Uri[]{data.getParcelableExtra(KEY_URI)} : processData(data), mCameraState);
+            aboveLollipopCheckFilesAndCallback(mCameraState ? new Uri[]{data.getParcelableExtra(KEY_URI)} : processData(data),
+                    mCameraState);
             return;
         }
 
@@ -627,12 +636,9 @@ public class FileChooser {
             }
         }
         return datas;
-
-
     }
 
     private void convertFileAndCallback(final Uri[] uris) {
-
         String[] paths = null;
         if (uris == null || uris.length == 0 || (paths = AgentWebUtils.uriToPath(mActivity, uris)) == null || paths.length == 0) {
             mJsChannelCallback.call(null);
@@ -716,9 +722,9 @@ public class FileChooser {
             ContentResolver contentResolver = mActivity.getContentResolver();
             final int takeFlags = (Intent.FLAG_GRANT_READ_URI_PERMISSION
                     | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            for (int i = 0; i < datas.length; i++) {
+            for (Uri data : datas) {
                 try {
-                    contentResolver.takePersistableUriPermission(datas[i], takeFlags);
+                    contentResolver.takePersistableUriPermission(data, takeFlags);
                 } catch (Throwable throwable) {
                     if (AgentWebConfig.DEBUG) {
                         throwable.printStackTrace();
@@ -746,7 +752,8 @@ public class FileChooser {
         }
         final String path = paths[0];
         mAgentWebUIController.get().onLoading(mActivity.getString(com.just.agentweb.R.string.agentweb_loading));
-        AsyncTask.THREAD_POOL_EXECUTOR.execute(new WaitPhotoRunnable(path, new AboveLCallback(mUriValueCallbacks, datas, mAgentWebUIController)));
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(new WaitPhotoRunnable(path, new AboveLCallback(mUriValueCallbacks, datas,
+                mAgentWebUIController)));
         mUriValueCallbacks = null;
 
     }
@@ -756,7 +763,8 @@ public class FileChooser {
         private Uri[] mUris;
         private WeakReference<AbsAgentWebUIController> controller;
 
-        private AboveLCallback(ValueCallback<Uri[]> valueCallbacks, Uri[] uris, WeakReference<AbsAgentWebUIController> controller) {
+        private AboveLCallback(ValueCallback<Uri[]> valueCallbacks, Uri[] uris,
+                               WeakReference<AbsAgentWebUIController> controller) {
             this.mValueCallback = valueCallbacks;
             this.mUris = uris;
             this.controller = controller;
@@ -888,7 +896,6 @@ public class FileChooser {
                 File mFile = new File(filePath);
                 Log.e(TAG, "encode file:" + mFile.length());
                 if (mFile.exists()) {
-
                     is = new FileInputStream(mFile);
                     if (is == null) {
                         return;
@@ -899,7 +906,8 @@ public class FileChooser {
                     while ((len = is.read(b, 0, 1024)) != -1) {
                         os.write(b, 0, len);
                     }
-                    mQueue.offer(new FileParcel(id, mFile.getAbsolutePath(), Base64.encodeToString(os.toByteArray(), Base64.DEFAULT)));
+                    mQueue.offer(new FileParcel(id, mFile.getAbsolutePath(), Base64.encodeToString(os.toByteArray(),
+                            Base64.DEFAULT)));
                 } else {
                 }
 
