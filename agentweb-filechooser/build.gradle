@@ -49,9 +49,10 @@ afterEvaluate {
         publications {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
-                groupId = 'com.github.Jiabaokang.AgentWeb'
+                from components.release
+                groupId = 'io.github.jiabaokang'
                 artifactId = 'agentweb-filechooser'
-                version = 'v5.1.2-androidx'
+                version = 'v5.1.3-androidx'
             }
         }
     }
