@@ -1,4 +1,5 @@
 jdk:
   - openjdk17
 install:
+  - ./gradlew :agentweb-core:assembleRelease :agentweb-filechooser:assembleRelease -x test --no-daemon --stacktrace
   - ./gradlew :agentweb-core:publishToMavenLocal :agentweb-filechooser:publishToMavenLocal -x test --no-daemon --stacktrace
