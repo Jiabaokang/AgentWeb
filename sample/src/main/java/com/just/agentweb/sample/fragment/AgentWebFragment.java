@@ -256,7 +256,8 @@ public class AgentWebFragment extends Fragment implements FragmentKeyDown, FileC
         String target = "";
 
         if (TextUtils.isEmpty(target = this.getArguments().getString(URL_KEY))) {
-            target = "http://cw.gzyunjuchuang.com/";
+            // 默认加载本地测试页，验证相册选择
+            target = "file:///android_asset/upload_file/image_album_test.html";
         }
 
 //		return "http://ggzy.sqzwfw.gov.cn/WebBuilderDS/WebbuilderMIS/attach/downloadZtbAttach.jspx?attachGuid=af982055-3d76-4b00-b5ab-36dee1f90b11&appUrlFlag=sqztb&siteGuid=7eb5f7f1-9041-43ad-8e13-8fcb82ea831a";

@@ -11,6 +11,7 @@
     <string name="agentweb_file_download">文件下载</string>
     <string name="agentweb_click_open">点击打开</string>
     <string name="agentweb_coming_soon_download">即将开始下载文件</string>
+    <string name="agentweb_album">相册</string>
     <string name="agentweb_camera">相机</string>
     <string name="agentweb_file_chooser">文件</string>
     <string name="agentweb_loading">加载中 ...</string>

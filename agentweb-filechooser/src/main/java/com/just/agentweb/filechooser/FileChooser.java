@@ -37,6 +37,7 @@ import android.util.Log;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.provider.MediaStore;
 
 import androidx.annotation.NonNull;
 
@@ -188,6 +189,18 @@ public class FileChooser {
 
     }
 
+    private void albumChooser() {
+        List<String> permission = null;
+        if (AgentWebUtils.getDeniedPermissions(mActivity, AgentWebPermissions.MEDIA).isEmpty()) {
+            albumAction();
+        } else {
+            Action mAction = Action.createPermissionsAction(AgentWebPermissions.MEDIA);
+            mAction.setFromIntention(FROM_INTENTION_CODE >> 4);
+            mAction.setPermissionListener(mPermissionListener);
+            AgentActionFragment.start(mActivity, mAction);
+        }
+    }
+
     private void chooserAction() {
         Action mAction = new Action();
         mAction.setAction(Action.ACTION_FILE);
@@ -201,6 +214,42 @@ public class FileChooser {
             }
         }
 
+    }
+
+    private void albumAction() {
+        Action mAction = new Action();
+        mAction.setAction(Action.ACTION_FILE);
+        mAction.setChooserListener(getChooserListener());
+        try {
+            mAction.setIntent(getAlbumIntent());
+            AgentActionFragment.start(mActivity, mAction);
+        } catch (Throwable throwable) {
+            if (AgentWebConfig.DEBUG) {
+                throwable.printStackTrace();
+            }
+        }
+    }
+
+    private Intent getAlbumIntent() {
+        // Android 13+ 使用系统 Photo Picker，无需存储权限，支持多选
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Intent intent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+            try {
+                int limit = MediaStore.getPickImagesMaxLimit();
+                if (limit > 1) {
+                    intent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, Math.min(limit, 9));
+                }
+            } catch (Throwable ignore) {
+            }
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            return intent;
+        }
+
+        // Android 4.4 - 12 使用 ACTION_PICK 打开系统相册应用
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        return intent;
     }
 
     private Intent getFileChooserIntent() {
@@ -252,39 +301,59 @@ public class FileChooser {
         boolean needVideo = false;
         // 在此支持视频拍摄
         // 是否直接打开文件选择器
+        boolean onlyImageByParams = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && this.mFileChooserParams != null && this.mFileChooserParams.getAcceptTypes() != null) {
             boolean needCamera = false;
+            boolean hasImage = false;
+            boolean hasVideo = false;
+            boolean hasWildcard = false;
             String[] types = this.mFileChooserParams.getAcceptTypes();
             for (String typeTmp : types) {
                 if (TextUtils.isEmpty(typeTmp)) {
                     continue;
                 }
-                if (typeTmp.contains("*/") || typeTmp.contains("image/")) {  //这是拍照模式
-                    needCamera = true;
-                    break;
+                if (typeTmp.contains("*/")) {
+                    hasWildcard = true;
+                }
+                if (typeTmp.contains("image/")) {
+                    hasImage = true;
+                    needCamera = true; // 保持原有逻辑：存在 image/ 时可拍照
                 }
 
                 if (typeTmp.contains("video/")) {  //调用摄像机拍摄  这是录像模式
+                    hasVideo = true;
                     needCamera = true;
                     mVideoState = true;
                 }
             }
+            // 仅图片（无 video/，无 */）时，只显示“相机/相册”选项
+            onlyImageByParams = hasImage && !hasVideo && !hasWildcard;
             if (!needCamera && !needVideo) {
                 chooserAction();
                 return;
             }
         }
+        // acceptType 存在但不包含图片且不为通配，直接走文件选择器
         if (!TextUtils.isEmpty(this.mAcceptType) && !this.mAcceptType.contains("*/") && !this.mAcceptType.contains("image/")) {
             chooserAction();
             return;
         }
+        // 在较老系统上没有 FileChooserParams 时，根据 acceptType 判断是否只允许图片
+        boolean onlyImageByAccept = !TextUtils.isEmpty(this.mAcceptType)
+                && this.mAcceptType.contains("image/")
+                && !this.mAcceptType.contains("*/")
+                && !this.mAcceptType.contains("video/");
 
         if (this.mAgentWebUIController.get() != null) {
+            String cameraText = mActivity.getString(com.just.agentweb.R.string.agentweb_camera);
+            String albumText = mActivity.getString(com.just.agentweb.R.string.agentweb_album);
+            String fileText = mActivity.getString(com.just.agentweb.R.string.agentweb_file_chooser);
+            String[] options = (onlyImageByParams || onlyImageByAccept)
+                    ? new String[]{cameraText, albumText}
+                    : new String[]{cameraText, albumText, fileText};
             this.mAgentWebUIController
                     .get()
-                    .onSelectItemsPrompt(this.mWebView, mWebView.getUrl(),
-                            new String[]{mActivity.getString(com.just.agentweb.R.string.agentweb_camera),
-                                    mActivity.getString(com.just.agentweb.R.string.agentweb_file_chooser)}, getCallBack());
+                    .onSelectItemsPrompt(this.mWebView, mWebView.getUrl(), options, getCallBack());
         }
 
     }
@@ -300,6 +369,10 @@ public class FileChooser {
                         onCameraAction();
                         break;
                     case 1:
+                        mCameraState = false;
+                        albumChooser();
+                        break;
+                    case 2:
                         mCameraState = false;
                         fileChooser();
                         break;
@@ -402,6 +475,20 @@ public class FileChooser {
                                     AgentWebPermissions.CAMERA,
                                     AgentWebPermissions.ACTION_CAMERA,
                                     "Take photo");
+                }
+            }
+        } else if (fromIntention == FROM_INTENTION_CODE >> 4) {
+            if (grant) {
+                albumAction();
+            } else {
+                cancel();
+                if (null != mAgentWebUIController.get()) {
+                    mAgentWebUIController
+                            .get()
+                            .onPermissionsDeny(
+                                    AgentWebPermissions.MEDIA,
+                                    AgentWebPermissions.ACTION_MEDIA,
+                                    "Open album");
                 }
             }
         }

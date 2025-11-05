@@ -34,7 +34,8 @@ public class SmartRefreshWebFragment extends BounceWebFragment {
 
     @Override
     public String getUrl() {
-        return super.getUrl();
+//        return super.getUrl();
+        return "file:///android_asset/upload_file/image_album_test.html";
     }
 
 
