@@ -53,9 +53,9 @@ publishing {
     publications {
         // Creates a Maven publication called "release".
         release(MavenPublication) {
-            groupId = 'com.github.Justson.AgentWeb'
+            groupId = 'com.github.Jiabaokang.AgentWeb'
             artifactId = 'agentweb-core'
-            version = 'v5.0.7-androidx'
+            version = 'v5.1.2-androidx'
         }
     }
 }
