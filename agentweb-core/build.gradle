@@ -34,6 +34,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    publishing {
+        singleVariant("release")
+    }
 //   defaultPublishConfig "debug"
 }
 
@@ -54,10 +57,10 @@ afterEvaluate {
         publications {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
-                from components.release
-                groupId = 'io.github.jiabaokang'
+                groupId = 'com.github.Jiabaokang.AgentWeb'
                 artifactId = 'agentweb-core'
                 version = 'v5.1.3-androidx'
+                artifact("${buildDir}/outputs/aar/${project.name}-release.aar")
             }
         }
     }

@@ -29,6 +29,9 @@ android {
     lintOptions{
         abortOnError false
     }
+    publishing {
+        singleVariant("release")
+    }
 
 }
 
@@ -49,10 +52,10 @@ afterEvaluate {
         publications {
             // Creates a Maven publication called "release".
             release(MavenPublication) {
-                from components.release
-                groupId = 'io.github.jiabaokang'
+                groupId = 'com.github.Jiabaokang.AgentWeb'
                 artifactId = 'agentweb-filechooser'
                 version = 'v5.1.3-androidx'
+                artifact("${buildDir}/outputs/aar/${project.name}-release.aar")
             }
         }
     }
